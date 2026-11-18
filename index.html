@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071923">
+<title>Reeflight Aquarium</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; color: #e5f9f4; background: #071923; }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  main { max-width: 1040px; margin: 0 auto; padding: clamp(16px,4vw,40px); }
+  header, footer { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  h1 { font: 500 clamp(32px,6vw,56px)/1.05 Georgia, serif; letter-spacing: -.04em; margin: 0 0 12px; }
+  p { margin: 0; color: #adcbd0; }
+  dl { display: flex; gap: 8px; margin: 0; }
+  dl div { border: 1px solid #28535d; background: #102c39; border-radius: 12px; padding: 7px 13px; min-width: 73px; }
+  dt { color: #adcbd0; font-size: 12px; }
+  dd { margin: 2px 0 0; font-weight: 700; }
+  #pearls { color: #ffdf8d; }
+  canvas { width: 100%; height: auto; display: block; margin: 20px 0 14px; border: 1px solid #39737b; border-radius: 18px; cursor: crosshair; }
+  button { cursor: pointer; background: #18454b; color: inherit; border: 1px solid #3b7a77; border-radius: 10px; padding: 11px 14px; font: 650 14px system-ui,sans-serif; }
+  button:hover:not(:disabled) { background: #226064; }
+  button:focus-visible, canvas:focus-visible { outline: 2px solid #9bf0cf; outline-offset: 3px; }
+  button:disabled { cursor: default; opacity: .55; }
+  .actions { display: flex; flex-wrap: wrap; gap: 7px; }
+  footer { align-items: center; }
+  #status { margin-top: 12px; min-height: 22px; font-size: 14px; }
+  #status[data-error] { color: #ffdf8d; }
+</style>
+<main>
+  <header>
+    <div>
+      <h1>Reeflight Aquarium</h1>
+      <p id="instructions">Click the water to feed fish. Click glowing pearls to collect them.</p>
+    </div>
+    <dl>
+      <div><dt>Pearls</dt><dd id="pearls">8</dd></div>
+      <div><dt>Fish</dt><dd id="fish-count">2</dd></div>
+      <div><dt>Coral</dt><dd id="coral-count">0 / 5</dd></div>
+    </dl>
+  </header>
+  <canvas id="tank" width="960" height="425" tabindex="0" aria-label="Aquarium" aria-describedby="instructions" title="Keyboard: Space to feed. Enter to collect a pearl."></canvas>
+  <footer>
+    <div class="actions">
+      <button id="buy" type="button">Buy fish � 12 pearls</button>
+      <button id="plant" type="button">Plant coral � 14 pearls</button>
+      <button id="save" type="button">Save now</button>
+    </div>
+    <p id="goal">Restore the reef by planting 5 corals.</p>
+  </footer>
+  <p id="status" role="status">Progress saves on this browser.</p>
+</main>
+<script type="module">
+  const SAVE_KEY = 'reeflight-aquarium-v1';
+  const MAX_FISH = 10, MAX_CORAL = 5, FISH_COST = 12;
+  const tank = document.querySelector('#tank');
+  const ctx = tank.getContext('2d');
+  const ui = Object.fromEntries(['pearls', 'fish-count', 'coral-count', 'buy', 'plant', 'save', 'goal', 'status']
+    .map(id => [id, document.getElementById(id)]));
+  const fishColors = ['#ffab77', '#87ebd2', '#c7aafb'];
+  const coralColors = ['#f88b99', '#7be1bb', '#bc9bf2', '#ffb980', '#72d6ef'];
+  const coralSpots = [185, 755, 330, 620, 485];
+  const bubbles = Array.from({length: 46}, (_, i) => ({
+    x: 32 + (i * 137) % 898, y: (i * 73) % 405, size: 1 + i % 5
+  }));
+  const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const pellets = [];
+  let savePaused = false;
+  let lastSaved = null;
+  let time = 0;
+  let nextSave = 5;
+
+  function newFish(kind, timer) {
+    return {kind, x: 165 + Math.random() * 630, y: 130 + Math.random() * 155,
+      energy: 84, growth: 16, direction: kind === 1 ? -1 : 1, timer, phase: Math.random() * 6.28};
+  }
+
+  function validProgress(data) {
+    const range = (n, low, high) => Number.isFinite(n) && n >= low && n <= high;
+    const integer = (n, low, high) => Number.isInteger(n) && range(n, low, high);
+    const position = obj => obj && range(obj.x, 38, 922) && range(obj.y, 52, 391);
+    return data?.version === 1 && integer(data.balance, 0, 999999) && integer(data.coral, 0, MAX_CORAL)
+      && Array.isArray(data.fish) && data.fish.length > 0 && data.fish.length <= MAX_FISH
+      && data.fish.every(f => position(f) && integer(f.kind, 0, 2) && range(f.energy, 0, 100)
+        && range(f.growth, 0, 100) && range(f.phase, 0, 6.28) && range(f.timer, 0, 22)
+        && [-1, 1].includes(f.direction))
+      && Array.isArray(data.pearls) && data.pearls.length <= 24
+      && data.pearls.every(p => position(p) && integer(p.value, 3, 10));
+  }
+
+  function status(message, error = false) {
+    if (ui.status.textContent !== message) ui.status.textContent = message;
+    ui.status.toggleAttribute('data-error', error);
+  }
+
+  function load() {
+    try {
+      lastSaved = localStorage.getItem(SAVE_KEY);
+      if (lastSaved !== null) {
+        const data = JSON.parse(lastSaved);
+        if (!validProgress(data)) throw new Error('Invalid save');
+        status('Saved progress loaded.');
+        return data;
+      }
+    } catch {
+      savePaused = true;
+      status('Saved progress is unavailable. Select Save now to try saving this game.', true);
+    }
+    return {version: 1, balance: 8, coral: 0, fish: [newFish(0, 8), newFish(1, 13)], pearls: []};
+  }
+
+  const state = load();
+
+  function save(manual = false) {
+    if (savePaused && !manual) return;
+    try {
+      if (localStorage.getItem(SAVE_KEY) !== lastSaved) {
+        savePaused = true;
+        status('A different tab saved progress. Reload this page to continue from that save.', true);
+        return;
+      }
+      const snapshot = JSON.stringify(state);
+      localStorage.setItem(SAVE_KEY, snapshot);
+      lastSaved = snapshot;
+      savePaused = false;
+      if (manual) status('Progress saved.');
+    } catch {
+      savePaused = true;
+      status('Could not save in this browser. Select Save now to retry.', true);
+    }
+  }
+
+  function refresh() {
+    const cost = 14 + state.coral * 7;
+    ui.pearls.textContent = state.balance;
+    ui['fish-count'].textContent = state.fish.length;
+    ui['coral-count'].textContent = state.coral + ' / ' + MAX_CORAL;
+    ui.buy.disabled = state.balance < FISH_COST || state.fish.length >= MAX_FISH;
+    ui.buy.textContent = state.fish.length >= MAX_FISH ? 'Tank full' : 'Buy fish � 12 pearls';
+    ui.plant.disabled = state.balance < cost || state.coral >= MAX_CORAL;
+    ui.plant.textContent = state.coral >= MAX_CORAL ? 'All coral planted' : 'Plant coral � ' + cost + ' pearls';
+    ui.goal.textContent = state.coral >= MAX_CORAL ? 'Reef restored!' : 'Restore the reef by planting 5 corals.';
+  }
+
+  function dropFood(x, y) {
+    if (pellets.length >= 14) pellets.shift();
+    pellets.push({x: clamp(x, 38, 922), y: clamp(y, 52, 367), age: 0});
+  }
+
+  function collect(index) {
+    const [pearl] = state.pearls.splice(index, 1);
+    if (!pearl) return;
+    state.balance = Math.min(999999, state.balance + pearl.value);
+    refresh();
+    save();
+  }
+
+  function tick(dt) {
+    for (let i = pellets.length - 1; i >= 0; i--) {
+      const p = pellets[i];
+      p.age += dt;
+      p.y = Math.min(367, p.y + dt * 13);
+      if (p.age > 18) pellets.splice(i, 1);
+    }
+    for (const fish of state.fish) {
+      fish.energy = Math.max(0, fish.energy - dt * 1.05);
+      let target, gap = Infinity;
+      if (fish.energy < 88) {
+        for (const p of pellets) {
+          const d = distance(fish, p);
+          if (d < gap) { target = p; gap = d; }
+        }
+      }
+      if (target && gap <= 15) {
+        fish.energy = Math.min(100, fish.energy + 41);
+        fish.growth = Math.min(100, fish.growth + 14);
+        pellets.splice(pellets.indexOf(target), 1);
+      } else if (target) {
+        const dx = target.x - fish.x;
+        const ratio = Math.min(1, 135 * dt / gap);
+        fish.x += dx * ratio;
+        fish.y += (target.y - fish.y) * ratio;
+        if (Math.abs(dx) > 3) fish.direction = Math.sign(dx);
+      } else {
+        fish.x = clamp(fish.x + fish.direction * (38 + fish.kind * 6 + fish.growth * .18) * dt, 38, 922);
+        if (fish.x === 38 || fish.x === 922) fish.direction = fish.x === 38 ? 1 : -1;
+        fish.y += (204 + Math.sin(time * .55 + fish.phase) * 88 - fish.y) * dt * .8;
+      }
+      fish.x = clamp(fish.x, 38, 922);
+      fish.y = clamp(fish.y, 52, 367);
+      if (fish.energy >= 34 && state.pearls.length < 24) {
+        fish.timer = Math.max(0, fish.timer - dt);
+        if (fish.timer === 0) {
+          const grown = fish.growth >= 65;
+          state.pearls.push({x: fish.x, y: fish.y, value: 3 + state.coral + (grown ? 2 : 0)});
+          fish.timer = (grown ? 13 : 19) + Math.random() * 3;
+        }
+      }
+    }
+    for (const p of state.pearls) p.y = Math.min(391, p.y + dt * 21);
+  }
+
+  function ellipse(x, y, rx, ry, fill) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, 0, 0, 2 * Math.PI);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  function strokeCurve(color, width, x, y, a, b, c, d, e, f) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(a, b, c, d, e, f);
+    ctx.stroke();
+  }
+
+  function polygon(fill, points) {
+    ctx.beginPath();
+    ctx.moveTo(...points[0]);
+    for (const point of points.slice(1)) ctx.lineTo(...point);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  const water = ctx.createLinearGradient(0, 0, 0, 425);
+  water.addColorStop(0, '#1b7483');
+  water.addColorStop(1, '#092738');
+
+  function drawHabitat() {
+    ctx.fillStyle = water;
+    ctx.fillRect(0, 0, 960, 425);
+    for (let i = 0; i < 6; i++) {
+      const x = 12 + i * 166 + Math.sin(time * .27 + i) * 16;
+      polygon('#dbfff020', [[x, 0], [x + 38, 0], [x + 168, 369], [x + 118, 322]]);
+      strokeCurve('#c1f8ef54', 1, x, 16, x + 23, 6, x + 78, 22, x + 112, 14);
+    }
+    for (const b of bubbles) {
+      ctx.beginPath();
+      ctx.arc(b.x + Math.sin(time + b.x) * 5, (405 + b.y - time * (7 + b.size) % 405) % 405, b.size, 0, 2 * Math.PI);
+      ctx.strokeStyle = '#c3eee74d';
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(0, 382);
+    ctx.bezierCurveTo(170, 356, 346, 423, 510, 386);
+    ctx.bezierCurveTo(702, 339, 826, 390, 960, 367);
+    ctx.lineTo(960, 425);
+    ctx.lineTo(0, 425);
+    ctx.fillStyle = '#29525a';
+    ctx.fill();
+    for (let i = 0; i < 74; i++) ellipse(11 + i * 137 % 940, 396 + i * 71 % 26, 1 + i % 3, 1, '#9cd3c052');
+    for (const x of [24, 57, 81, 105, 840, 872, 906, 938]) {
+      const lean = Math.sin(time * .8 + x) * 12;
+      strokeCurve('#418f82', 3, x, 407, x - 21, 382, x + 27 + lean, 352, x + 9 + lean, 319 + x % 24);
+      strokeCurve('#4ea492', 2, x, 404, x + 4, 390, x - 21 - lean, 369, x - 15, 357);
+    }
+    for (const [index, x] of coralSpots.entries()) {
+      ellipse(x, 401, 17, 5, '#12353e');
+      if (index >= state.coral) {
+        ellipse(x, 398, 8, 3, '#578085');
+        continue;
+      }
+      const color = coralColors[index];
+      strokeCurve(color, 6, x, 399, x - 10, 367, x + 12, 354, x + 2, 319);
+      strokeCurve(color, 5, x, 378, x - 23, 366, x - 29, 355, x - 25, 340);
+      strokeCurve(color, 5, x + 3, 359, x + 24, 357, x + 27, 341, x + 31, 329);
+      ellipse(x + 2, 319, 3, 3, '#ffe3bc');
+      ellipse(x + 31, 329, 2.5, 2.5, '#ffe3bc');
+    }
+  }
+
+  function drawFish(fish) {
+    ctx.save();
+    ctx.translate(fish.x, fish.y);
+    const size = .67 + fish.growth * .0048;
+    ctx.scale(fish.direction * size, size);
+    const color = fishColors[fish.kind];
+    const twitch = Math.sin(time * 7 + fish.phase) * 5;
+    if (fish.energy < 34) ctx.globalAlpha = .62;
+    polygon(color, [[-13, 0], [-44 + twitch, -14], [-37 + twitch, 0], [-44 + twitch, 14]]);
+    polygon(color, [[-14, -9], [-8, -24], [9, -11]]);
+    ellipse(0, 0, 25, 15, color);
+    ellipse(-1, -5, 18, 6, '#fff5d744');
+    strokeCurve('#14495767', 2.4, -10, -10, -3, -4, -5, 6, -12, 10);
+    if (fish.kind !== 0) strokeCurve('#14495755', 2.4, -18, -8, -12, -3, -13, 4, -18, 8);
+    ellipse(14, -4, 5, 5, '#effff9');
+    ellipse(15, -4, 2.6, 2.6, '#0b303b');
+    if (fish.energy < 34) ellipse(0, 22, 4, 4, '#ffdf8d');
+    ctx.restore();
+  }
+
+  function draw() {
+    drawHabitat();
+    for (const p of pellets) ellipse(p.x, p.y, 2.5, 2.5, '#ffb174');
+    for (const fish of state.fish) drawFish(fish);
+    for (const p of state.pearls) {
+      const radius = 12 + Math.sin(time * 4 + p.x) * 2;
+      ellipse(p.x, p.y, radius + 7, radius + 7, '#ffdc882b');
+      ellipse(p.x, p.y, radius, radius, '#ffdc8868');
+      ellipse(p.x, p.y, 6, 6, '#ffdf8d');
+      ellipse(p.x - 1, p.y - 2, 2, 2, '#fff8da');
+    }
+  }
+
+  tank.addEventListener('click', event => {
+    const rect = tank.getBoundingClientRect();
+    const point = {x: (event.clientX - rect.left) * tank.width / rect.width,
+      y: (event.clientY - rect.top) * tank.height / rect.height};
+    const index = state.pearls.findIndex(p => distance(p, point) <= 23);
+    if (index >= 0) collect(index);
+    else dropFood(point.x, point.y);
+  });
+  tank.addEventListener('keydown', event => {
+    if (event.code === 'Space') dropFood(480, 100);
+    else if (event.key === 'Enter') collect(0);
+    else return;
+    event.preventDefault();
+  });
+  ui.buy.addEventListener('click', () => {
+    if (ui.buy.disabled) return;
+    state.balance -= FISH_COST;
+    state.fish.push(newFish(state.fish.length % 3, 10));
+    refresh();
+    save();
+  });
+  ui.plant.addEventListener('click', () => {
+    if (ui.plant.disabled) return;
+    state.balance -= 14 + state.coral * 7;
+    state.coral++;
+    refresh();
+    save();
+  });
+  ui.save.addEventListener('click', () => save(true));
+  window.addEventListener('pagehide', () => save());
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) save();
+  });
+
+  let previous = performance.now();
+  function frame(now) {
+    const dt = Math.min(.1, (now - previous) / 1000);
+    previous = now;
+    if (!document.hidden) {
+      time += dt;
+      tick(dt);
+      draw();
+      if (time >= nextSave) {
+        nextSave = time + 5;
+        save();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  refresh();
+  requestAnimationFrame(frame);
+</script>
+</html>
