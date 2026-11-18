@@ -2,577 +2,556 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#071923">
+<meta name="theme-color" content="#091a26">
 <title>Reeflight Aquarium</title>
 <style>
-  :root { color-scheme: dark; font-family: system-ui, sans-serif; color: #e5f9f4; background: #071923; }
+  :root { color-scheme: dark; font: 16px system-ui,sans-serif; color: #eef9f2; background: #091a26; }
   * { box-sizing: border-box; }
   body { margin: 0; }
-  main { max-width: 1040px; margin: 0 auto; padding: clamp(16px,4vw,40px); }
-  header, footer { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-  h1 { font: 500 clamp(32px,6vw,56px)/1.05 Georgia, serif; letter-spacing: -.04em; margin: 0 0 12px; }
-  p { margin: 0; color: #adcbd0; }
-  dl { display: flex; gap: 8px; margin: 0; }
-  dl div { border: 1px solid #28535d; background: #102c39; border-radius: 12px; padding: 7px 13px; min-width: 73px; }
-  dt { color: #adcbd0; font-size: 12px; }
-  dd { margin: 2px 0 0; font-weight: 700; }
-  #pearls { color: #ffdf8d; }
-  canvas { width: 100%; height: auto; display: block; margin: 20px 0 14px; border: 1px solid #39737b; border-radius: 18px; cursor: crosshair; }
-  button { cursor: pointer; background: #18454b; color: inherit; border: 1px solid #3b7a77; border-radius: 10px; padding: 11px 14px; font: 650 14px system-ui,sans-serif; }
-  button:hover:not(:disabled) { background: #226064; }
-  button:focus-visible, canvas:focus-visible { outline: 2px solid #9bf0cf; outline-offset: 3px; }
-  button:disabled { cursor: default; opacity: .55; }
-  .actions { display: flex; flex-wrap: wrap; gap: 7px; }
-  footer { align-items: center; }
-  #status { margin-top: 12px; min-height: 22px; font-size: 14px; }
-  #status[data-error] { color: #ffdf8d; }
-  .tank-wrap { position: relative; }
-  .water-status { position: absolute; inset: 12px 12px auto; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; }
-  .water-status p { background: #071923e8; border-radius: 7px; padding: 6px 9px; font-size: 13px; }
-  #current[data-alert], #oxygen[data-alert] { color: #ffdf8d; }
-  #result { margin: 0 0 12px; padding: 12px; background: #102c39; border: 1px solid #39737b; border-radius: 10px; }
-  #result p { margin-bottom: 8px; }
-  canvas[data-done] { cursor: default; }
-  @media (max-width: 550px) {
-    .water-status { position: static; margin-bottom: 12px; }
-    canvas { margin-bottom: 6px; }
+  #game { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr); overflow: hidden; background: #092a39; }
+  .dash { z-index: 1; display: flex; align-items: stretch; flex-wrap: wrap; gap: 6px; padding: 9px; background: #0d222f; border-bottom: 2px solid #5b8190; }
+  button { color: inherit; font: inherit; cursor: pointer; border: 1px solid #3c6575; background: #132f3d; border-radius: 8px; }
+  button:hover:not(:disabled) { background: #245165; }
+  button:focus-visible, canvas:focus-visible { outline: 2px solid #b7f9e0; outline-offset: -3px; }
+  button:disabled { cursor: default; opacity: .58; }
+  .item { display: grid; justify-items: start; grid-template-columns: auto 1fr; column-gap: 8px; align-content: center; padding: 6px 10px; text-align: left; }
+  .item .icon { grid-row: span 2; align-self: center; color: #ffd58c; font-size: 23px; line-height: 1; min-width: 24px; text-align: center; }
+  .item strong { font-size: 13px; }
+  .item small, .balance small { font-size: 12px; color: #b9d5dc; }
+  .balance { display: grid; align-content: center; min-width: 82px; padding: 4px 10px; background: #09222a; border: 1px solid #447d7b; border-radius: 8px; }
+  .balance output { color: #ffe29b; font-size: clamp(18px,3.2vw,28px); font-weight: 750; line-height: 1.05; }
+  .utility { display: flex; gap: 6px; margin-left: auto; }
+  .utility button { padding: 5px 9px; font-size: 13px; }
+  .tank { position: relative; min-height: 0; }
+  canvas { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: manipulation; }
+  .tank-notes { position: absolute; inset: 12px 12px auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px; pointer-events: none; }
+  .tank-notes p, #status { padding: 6px 10px; margin: 0; font-size: 13px; border-radius: 7px; background: #091a26e8; color: #d6ebe8; }
+  #raid[data-alert], #status[data-error] { color: #ffda92; }
+  #status { position: absolute; bottom: 12px; left: 12px; right: auto; max-width: calc(100% - 24px); pointer-events: none; }
+  #lost { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%,-50%); width: min(290px,90%); padding: 20px; text-align: center; border: 1px solid #72929a; background: #0d222ff5; border-radius: 12px; }
+  #lost p { margin: 0 0 12px; }
+  #lost button { padding: 8px 12px; }
+  @media (max-width: 640px) {
+    .dash { gap: 4px; padding: 5px; }
+    .item { padding: 5px 6px; column-gap: 4px; }
+    .item .icon { font-size: 17px; min-width: 16px; }
+    .tank-notes p, #status { font-size: 11px; }
   }
 </style>
-<main>
-  <header>
-    <div>
-      <h1>Reeflight Aquarium</h1>
-      <p id="instructions">Click the water to feed fish. Click glowing pearls before they dissolve.</p>
+<main id="game" aria-label="Reeflight Aquarium">
+  <header class="dash" aria-label="Aquarium shop">
+    <div class="balance"><small>Cash</small><output id="cash">$80</output></div>
+    <button class="item" id="buy" type="button"><span class="icon" aria-hidden="true">?</span><strong>Buy fish</strong><small>$40</small></button>
+    <button class="item" id="upgrade" type="button"><span class="icon" id="food-icon" aria-hidden="true">?</span><strong>Upgrade food</strong><small id="upgrade-info">$32</small></button>
+    <button class="item" id="gun" type="button" title="Click the alien to shoot it, or use this button"><span class="icon" aria-hidden="true">?</span><strong>Fire blaster</strong><small id="gun-info">Standby</small></button>
+    <div class="utility">
+      <button id="save" type="button">Save</button>
+      <button id="fullscreen" type="button">Full screen</button>
     </div>
-    <dl>
-      <div><dt>Pearls</dt><dd id="pearls">8</dd></div>
-      <div><dt>Fish</dt><dd id="fish-count">2</dd></div>
-      <div><dt>Coral</dt><dd id="coral-count">0 / 5</dd></div>
-    </dl>
   </header>
-  <div class="tank-wrap">
-    <canvas id="tank" width="960" height="425" tabindex="0" aria-label="Aquarium" aria-describedby="instructions" title="Space to feed, Enter to collect a pearl"></canvas>
-    <div class="water-status">
-      <p id="current">Water calm</p>
-      <p id="oxygen">Oxygen 100%</p>
+  <section class="tank" aria-label="Aquarium">
+    <canvas id="tank" width="960" height="490" tabindex="0" aria-label="Aquarium playfield" aria-describedby="controls"></canvas>
+    <div class="tank-notes">
+      <p id="controls">Click water to feed � Click coins to collect</p>
+      <p id="raid" role="status">Tank clear</p>
     </div>
-  </div>
-  <div id="result" hidden>
-    <p id="outcome"></p>
-    <button id="continue" type="button"></button>
-  </div>
-  <footer>
-    <div class="actions">
-      <button id="buy" type="button">Buy fish � 12 pearls</button>
-      <button id="plant" type="button">Plant coral � 14 pearls</button>
-      <button id="food" type="button">Upgrade feed � 22 pearls</button>
-      <button id="skimmer" type="button">Install skimmer � 32 pearls</button>
-      <button id="pump" type="button" title="Press A with the aquarium focused">Aerate water</button>
-      <button id="save" type="button">Save now</button>
-    </div>
-    <p id="goal">Restore the reef by planting 5 corals.</p>
-  </footer>
-  <p id="status" role="status">Progress saves on this browser.</p>
+    <div id="lost" hidden><p role="status">All fish were lost.</p><button id="restart" type="button">Start a new tank</button></div>
+    <p id="status" role="status">Autosave on</p>
+  </section>
 </main>
 <script type="module">
   const SAVE_KEY = 'reeflight-aquarium-v1';
-  const MAX_FISH = 10, MAX_CORAL = 5, FISH_COST = 12;
-  const FOOD_COST = 22, SKIMMER_COST = 32, PEARL_LIFETIME = 12;
-  const CORAL_COSTS = [14, 24, 38, 52, 70];
-  const FIRST_CURRENT = 55, CURRENT_LENGTH = 18, CURRENT_WARNING = 10;
-  const tank = document.querySelector('#tank');
-  const ctx = tank.getContext('2d');
-  const ui = Object.fromEntries(['pearls', 'fish-count', 'coral-count', 'buy', 'plant', 'food', 'skimmer',
-    'pump', 'save', 'goal', 'status', 'current', 'oxygen', 'result', 'outcome', 'continue']
-    .map(id => [id, document.getElementById(id)]));
-  const fishColors = ['#ffab77', '#87ebd2', '#c7aafb'];
-  const coralColors = ['#f88b99', '#7be1bb', '#bc9bf2', '#ffb980', '#72d6ef'];
-  const coralSpots = [185, 755, 330, 620, 485];
-  const bubbles = Array.from({length: 46}, (_, i) => ({
-    x: 32 + (i * 137) % 898, y: (i * 73) % 405, size: 1 + i % 5
-  }));
-  const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
-  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  const pellets = [];
-  const feedback = [];
-  let savePaused = false;
-  let lastSaved = null;
-  let time = 0;
-  let nextSave = 5;
+  const WIDTH = 960, HEIGHT = 490;
+  const MAX_CASH = 999999, MAX_FISH = 12, MAX_FOOD = 6, BUY_FISH = 40;
+  const COIN_LIFETIME = 11, FIRST_RAID = 48, RAID_WARNING = 8, SHOT_COOLDOWN = .24;
+  const FOOD = [
+    {label:'Pellet', cash:3, upgrade:32, energy:38, growth:14, shape:'?', color:'#e6a374'},
+    {label:'Flake', cash:4, upgrade:65, energy:56, growth:21, shape:'?', color:'#7ff0d8'},
+    {label:'Cube', cash:5, upgrade:null, energy:74, growth:29, shape:'�', color:'#d9a9fc'}
+  ];
+  const ids = ['game','tank','cash','buy','upgrade','upgrade-info','food-icon','gun','gun-info',
+    'save','fullscreen','controls','raid','status','lost','restart'];
+  const ui = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+  const ctx = ui.tank.getContext('2d');
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
+  const effects = [];
+  const fishColors = ['#f5a771','#82dfcb','#caabf5'];
+  const bubbles = Array.from({length:42}, (_,i) => ({x:25 + i*131%900,y:i*77%480,size:1 + i%5}));
+  let lastSaved = null, savePaused = false, animationTime = 0, untilSave = 5;
 
-  function newFish(kind, timer) {
-    return {kind, x: 165 + Math.random() * 630, y: 130 + Math.random() * 155,
-      energy: 76, health: 100, growth: 16, direction: kind === 1 ? -1 : 1, timer, phase: Math.random() * 6.28};
+  function makeFish(kind,timer) {
+    return {kind, x:160+Math.random()*640, y:135+Math.random()*180, energy:78, health:100, growth:12,
+      direction:kind===1?-1:1, timer, phase:Math.random()*6.28};
   }
 
-  function roundDefaults() {
-    return {outcome: 'active', elapsed: 0, nextCurrent: FIRST_CURRENT, oxygen: 100, pumpReady: 0,
-      feedUpgraded: false, hasSkimmer: false, skimmerReady: 0};
+  function freshTank() {
+    return {version:3, cash:80, foodLevel:0, elapsed:0, nextRaid:FIRST_RAID, raidsCleared:0, shotReady:0,
+      alien:null, fish:[makeFish(0,5),makeFish(1,9)], coins:[], pellets:[]};
   }
 
-  function freshProgress(restoredReef = false) {
-    return {version: 2, restoredReef, round: roundDefaults(), balance: 8, coral: 0,
-      fish: [newFish(0, 5), newFish(1, 9)], pearls: []};
+  const range = (v,min,max) => Number.isFinite(v) && v>=min && v<=max;
+  const integer = (v,min,max) => Number.isInteger(v) && range(v,min,max);
+  const position = o => o && range(o.x,38,922) && range(o.y,52,445);
+
+  function validFish(f) {
+    return position(f) && integer(f.kind,0,2) && range(f.energy,0,100) && range(f.growth,0,100)
+      && range(f.phase,0,6.28) && range(f.timer,0,22) && (f.direction===1 || f.direction===-1);
   }
 
-  function validProgress(data) {
-    const range = (n, low, high) => Number.isFinite(n) && n >= low && n <= high;
-    const integer = (n, low, high) => Number.isInteger(n) && range(n, low, high);
-    const position = obj => obj && range(obj.x, 38, 922) && range(obj.y, 52, 391);
-    const legacy = data?.version === 1;
-    if (!legacy && data?.version !== 2) return false;
-    const round = data.round;
-    return (legacy || (round && ['active', 'won', 'lost', 'free'].includes(round.outcome)
-      && range(round.elapsed, 0, Number.MAX_SAFE_INTEGER) && range(round.nextCurrent, 0, Number.MAX_SAFE_INTEGER)
-      && range(round.oxygen, 0, 100) && range(round.pumpReady, 0, 4) && range(round.skimmerReady, 0, 8)
-      && typeof data.restoredReef === 'boolean' && typeof round.feedUpgraded === 'boolean'
-      && typeof round.hasSkimmer === 'boolean'
-      && (!['won', 'free'].includes(round.outcome) || (data.restoredReef && data.coral === MAX_CORAL))))
-      && integer(data.balance, 0, 999999) && integer(data.coral, 0, MAX_CORAL)
-      && Array.isArray(data.fish) && (data.fish.length > 0 || (!legacy && round.outcome === 'lost'))
-      && (legacy || round.outcome !== 'lost' || data.fish.length === 0) && data.fish.length <= MAX_FISH
-      && data.fish.every(f => position(f) && integer(f.kind, 0, 2) && range(f.energy, 0, 100)
-        && range(f.growth, 0, 100) && range(f.phase, 0, 6.28) && range(f.timer, 0, 22)
-        && (legacy || (range(f.health, 0, 100) && f.health > 0))
-        && [-1, 1].includes(f.direction))
-      && Array.isArray(data.pearls) && data.pearls.length <= 24
-      && data.pearls.every(p => position(p) && integer(p.value, 3, 10)
-        && (legacy || range(p.age, 0, PEARL_LIFETIME)));
+  function validTank(s) {
+    return s?.version===3 && integer(s.cash,0,MAX_CASH) && integer(s.foodLevel,0,2)
+      && range(s.elapsed,0,Number.MAX_SAFE_INTEGER) && range(s.nextRaid,0,Number.MAX_SAFE_INTEGER)
+      && integer(s.raidsCleared,0,Number.MAX_SAFE_INTEGER) && range(s.shotReady,0,SHOT_COOLDOWN)
+      && Array.isArray(s.fish) && s.fish.length<=MAX_FISH
+      && s.fish.every(f => validFish(f) && range(f.health,0,100) && f.health>0)
+      && Array.isArray(s.coins) && s.coins.length<=32 && s.coins.every(c =>
+        position(c) && integer(c.value,1,50) && range(c.age,0,COIN_LIFETIME))
+      && Array.isArray(s.pellets) && s.pellets.length<=MAX_FOOD && s.pellets.every(p =>
+        position(p) && integer(p.level,0,2) && range(p.age,0,14))
+      && (s.alien===null || (position(s.alien) && integer(s.alien.hp,1,9)
+        && integer(s.alien.maxHp,s.alien.hp,9) && range(s.alien.biteReady,0,5)));
   }
 
-  function upgradeSave(data) {
-    if (data.version === 2) return data;
-    const round = roundDefaults();
-    const restoredReef = data.coral === MAX_CORAL;
-    if (restoredReef) round.outcome = 'won';
-    return {...data, version: 2, restoredReef, round,
-      fish: data.fish.map(fish => ({...fish, health: 100})),
-      pearls: data.pearls.map(pearl => ({...pearl, age: 0}))};
+  function migrate(s) {
+    if ((s?.version!==1 && s?.version!==2) || !integer(s.balance,0,MAX_CASH)
+      || !Array.isArray(s.fish) || s.fish.length>MAX_FISH || !s.fish.every(validFish)
+      || !Array.isArray(s.pearls) || s.pearls.length>32
+      || !s.pearls.every(p => position(p) && integer(p.value,1,50))) return null;
+    return {...freshTank(), cash:s.balance, fish:s.fish.map(f =>
+      ({...f,health:range(f.health,0,100) && f.health>0?f.health:100})),
+      foodLevel:s.round?.feedUpgraded===true?1:0, coins:s.pearls.map(p => ({x:p.x,y:p.y,value:p.value,age:0}))};
   }
 
-  function status(message, error = false) {
-    if (ui.status.textContent !== message) ui.status.textContent = message;
-    ui.status.toggleAttribute('data-error', error);
+  function status(message,error=false) {
+    if (ui.status.textContent!==message) ui.status.textContent=message;
+    ui.status.toggleAttribute('data-error',error);
   }
 
   function load() {
     try {
-      lastSaved = localStorage.getItem(SAVE_KEY);
-      if (lastSaved !== null) {
-        const data = JSON.parse(lastSaved);
-        if (!validProgress(data)) throw new Error('Invalid save');
-        status('Saved progress loaded.');
-        return upgradeSave(data);
+      lastSaved=localStorage.getItem(SAVE_KEY);
+      if (lastSaved!==null) {
+        const raw=JSON.parse(lastSaved);
+        const saved=raw?.version===3?raw:migrate(raw);
+        if (!validTank(saved)) throw new Error('Invalid save');
+        status(raw.version===3?'Saved tank loaded.':'Fish, cash and food upgrade carried over.');
+        return saved;
       }
     } catch {
-      savePaused = true;
-      status('Saved progress is unavailable. Select Save now to try saving this game.', true);
+      savePaused=true;
+      status('Save unavailable. Select Save to try saving this tank.',true);
     }
-    return freshProgress();
+    return freshTank();
   }
 
-  let state = load();
+  let state=load();
 
-  function save(manual = false) {
+  function save(manual=false) {
     if (savePaused && !manual) return;
     try {
-      if (localStorage.getItem(SAVE_KEY) !== lastSaved) {
-        savePaused = true;
-        status('A different tab saved progress. Reload this page to continue from that save.', true);
+      if (localStorage.getItem(SAVE_KEY)!==lastSaved) {
+        savePaused=true;
+        status('Another tab saved this tank. Reload to continue from that save.',true);
         return;
       }
-      const snapshot = JSON.stringify(state);
-      localStorage.setItem(SAVE_KEY, snapshot);
-      lastSaved = snapshot;
-      savePaused = false;
-      if (manual) status('Progress saved.');
+      const snapshot=JSON.stringify(state);
+      localStorage.setItem(SAVE_KEY,snapshot);
+      lastSaved=snapshot;
+      savePaused=false;
+      if (manual) status('Tank saved.');
     } catch {
-      savePaused = true;
-      status('Could not save in this browser. Select Save now to retry.', true);
+      savePaused=true;
+      status('Could not save the tank in this browser.',true);
     }
   }
 
-  function playing() { return state.round.outcome === 'active' || state.round.outcome === 'free'; }
-
-  function currentActive() {
-    return state.round.outcome === 'active' && state.round.elapsed >= state.round.nextCurrent;
+  function say(message) {
+    if (!savePaused) status(message);
   }
 
-  function refreshWater() {
-    const round = state.round;
-    const until = round.nextCurrent - round.elapsed;
-    const warning = round.outcome === 'active' && until <= CURRENT_WARNING;
-    const active = currentActive();
-    const currentLabel = active ? 'Low-oxygen current � aerate now' : warning ? 'Current approaching � ' + Math.ceil(until) + ' s' : 'Water calm';
-    if (ui.current.textContent !== currentLabel) ui.current.textContent = currentLabel;
-    ui.current.toggleAttribute('data-alert', warning);
-    const oxygenLabel = 'Oxygen ' + Math.ceil(round.oxygen) + '%';
-    if (ui.oxygen.textContent !== oxygenLabel) ui.oxygen.textContent = oxygenLabel;
-    ui.oxygen.toggleAttribute('data-alert', round.oxygen < 55);
-    ui.pump.disabled = !playing() || round.pumpReady > 0 || (!active && round.oxygen >= 99);
+  function refreshRaid() {
+    const seconds=Math.max(0,Math.ceil(state.nextRaid-state.elapsed));
+    const underAttack=Boolean(state.alien && state.fish.length);
+    const warning=state.fish.length>0 && seconds<=RAID_WARNING;
+    const label=underAttack?'Alien in tank � click it to fire':warning?'Alien arriving in '+seconds+' s':'Tank clear';
+    if (ui.raid.textContent!==label) ui.raid.textContent=label;
+    ui.raid.toggleAttribute('data-alert',underAttack || warning);
+    ui.gun.disabled=!underAttack || state.shotReady>0;
+    const gunText=underAttack?state.alien.hp+' hits left':'Standby';
+    if (ui['gun-info'].textContent!==gunText) ui['gun-info'].textContent=gunText;
   }
 
   function refresh() {
-    const round = state.round;
-    const cost = CORAL_COSTS[state.coral];
-    const done = !playing();
-    ui.pearls.textContent = state.balance;
-    ui['fish-count'].textContent = state.fish.length;
-    ui['coral-count'].textContent = state.coral + ' / ' + MAX_CORAL;
-    ui.buy.disabled = done || state.balance < FISH_COST || state.fish.length >= MAX_FISH;
-    ui.buy.textContent = state.fish.length >= MAX_FISH ? 'Tank full' : 'Buy fish � 12 pearls';
-    ui.plant.disabled = done || state.balance < cost || state.coral >= MAX_CORAL;
-    ui.plant.textContent = state.coral >= MAX_CORAL ? 'All coral planted' : 'Plant coral � ' + cost + ' pearls';
-    ui.goal.textContent = state.coral >= MAX_CORAL ? 'Reef restored!' : 'Restore the reef by planting 5 corals.';
-    ui.food.disabled = done || round.feedUpgraded || state.balance < FOOD_COST;
-    ui.food.textContent = round.feedUpgraded ? 'Enriched feed equipped' : 'Upgrade feed � ' + FOOD_COST + ' pearls';
-    ui.skimmer.disabled = done || round.hasSkimmer || state.coral < 2 || state.balance < SKIMMER_COST;
-    ui.skimmer.textContent = round.hasSkimmer ? 'Skimmer installed' : state.coral < 2
-      ? 'Skimmer unlocks at 2 coral' : 'Install skimmer � ' + SKIMMER_COST + ' pearls';
-    ui.result.hidden = !done;
-    tank.toggleAttribute('data-done', done);
-    if (done) {
-      const won = round.outcome === 'won';
-      ui.outcome.textContent = won ? 'Reef restored. Free swim is unlocked, with no more low-oxygen currents.'
-        : 'The tank has no fish left. Start a new round to try restoring the reef again.';
-      ui.continue.textContent = won ? 'Continue in free swim' : 'Start a new round';
-    }
-    refreshWater();
+    const food=FOOD[state.foodLevel];
+    const lost=state.fish.length===0;
+    ui.cash.textContent='$'+state.cash.toLocaleString('en-US');
+    ui.buy.disabled=lost || state.cash<BUY_FISH || state.fish.length>=MAX_FISH;
+    ui.upgrade.disabled=lost || food.upgrade===null || state.cash<food.upgrade;
+    ui['food-icon'].textContent=food.shape;
+    ui['food-icon'].style.color=food.color;
+    ui['upgrade-info'].textContent=food.upgrade===null?food.label+' � Max':food.label+' � $'+food.upgrade;
+    ui.controls.textContent='Feed $'+food.cash+' � Click coins to collect';
+    ui.lost.hidden=!lost;
+    ui.tank.style.cursor=state.alien&&!lost?'crosshair':lost?'default':'pointer';
+    refreshRaid();
   }
 
-  function dropFood(x, y) {
-    if (!playing() || pellets.length >= (state.round.feedUpgraded ? 9 : 5)) return;
-    pellets.push({x: clamp(x, 38, 922), y: clamp(y, 52, 367), age: 0});
-  }
-
-  function collect(index) {
-    if (!playing() || index < 0) return;
-    const [pearl] = state.pearls.splice(index, 1);
-    if (!pearl) return;
-    state.balance = Math.min(999999, state.balance + pearl.value);
-    feedback.push({x: pearl.x, y: pearl.y, age: 0, text: '+' + pearl.value, color: '#ffe28e'});
+  function dropFood(x,y) {
+    if (!state.fish.length || state.pellets.length>=MAX_FOOD) return;
+    const cost=FOOD[state.foodLevel].cash;
+    if (state.cash<cost) {say('Not enough cash for food. Collect a coin first.');return;}
+    state.cash-=cost;
+    state.pellets.push({x:clamp(x,38,922),y:clamp(y,52,420),age:0,level:state.foodLevel});
+    effects.push({type:'label',x,y,text:'-$'+cost,color:'#f6b692',age:0});
     refresh();
     save();
   }
 
-  function advanceWater(dt) {
-    const round = state.round;
-    round.elapsed += dt;
-    round.pumpReady = Math.max(0, round.pumpReady - dt);
-    if (currentActive() && round.elapsed >= round.nextCurrent + CURRENT_LENGTH) {
-      round.nextCurrent = round.elapsed + Math.max(48, 70 - state.coral * 4);
-      if (!savePaused) status('The current passed. Oxygen is recovering.');
+  function reward(amount,x,y) {
+    state.cash=Math.min(MAX_CASH,state.cash+amount);
+    effects.push({type:'label',x,y,text:'+$'+amount,color:'#ffe5a0',age:0});
+  }
+
+  function collect(index) {
+    if (!state.fish.length || index<0) return;
+    const [coin]=state.coins.splice(index,1);
+    if (!coin) return;
+    reward(coin.value,coin.x,coin.y);
+    refresh();
+    save();
+  }
+
+  function hurt(fish,amount) {
+    fish.health-=amount;
+    if (fish.health>0) return false;
+    state.fish.splice(state.fish.indexOf(fish),1);
+    say(state.fish.length?'A fish was lost.':'The tank is empty.');
+    refresh();
+    return true;
+  }
+
+  function runAlien(dt) {
+    if (!state.alien && state.elapsed>=state.nextRaid) {
+      const hp=Math.min(9,5+state.raidsCleared);
+      state.alien={x:866,y:200,hp,maxHp:hp,biteReady:4};
+      refresh();
+      say('Alien sighted. Click it to fire the blaster.');
+      save();
     }
-    const rate = currentActive() ? -7 : 5 + state.coral * .5;
-    round.oxygen = clamp(round.oxygen + dt * rate, 0, 100);
+    const alien=state.alien;
+    if (!alien) return;
+    alien.biteReady=Math.max(0,alien.biteReady-dt);
+    const target=state.fish.reduce((nearest,fish) => distance(alien,fish)<distance(alien,nearest)?fish:nearest);
+    const gap=distance(target,alien);
+    if (gap>25) {
+      const ratio=Math.min(1,66*dt/gap);
+      alien.x=clamp(alien.x+(target.x-alien.x)*ratio,38,922);
+      alien.y=clamp(alien.y+(target.y-alien.y)*ratio,52,445);
+    }
+    if (alien.biteReady===0 && gap<=48) {
+      alien.biteReady=3.5;
+      if (hurt(target,50)) save();
+    }
+  }
+
+  function fire() {
+    const alien=state.alien;
+    if (!alien || state.shotReady>0 || !state.fish.length) return;
+    state.shotReady=SHOT_COOLDOWN;
+    alien.hp--;
+    effects.push({type:'shot',x:alien.x,y:alien.y,age:0});
+    if (alien.hp===0) {
+      reward(22,alien.x,alien.y);
+      state.alien=null;
+      state.raidsCleared++;
+      state.nextRaid=state.elapsed+Math.max(32,64-state.raidsCleared*4);
+      say('Alien repelled.');
+    }
+    refresh();
+    save();
   }
 
   function tick(dt) {
-    if (!playing()) return;
-    advanceWater(dt);
-    const round = state.round;
-    for (let i = pellets.length - 1; i >= 0; i--) {
-      const p = pellets[i];
-      p.age += dt;
-      p.y = Math.min(367, p.y + dt * 13);
-      if (p.age > 18) pellets.splice(i, 1);
+    if (!state.fish.length) return;
+    state.elapsed+=dt;
+    state.shotReady=Math.max(0,state.shotReady-dt);
+    runAlien(dt);
+    for (let i=state.pellets.length-1;i>=0;i--) {
+      const p=state.pellets[i];
+      p.age+=dt;
+      p.y=Math.min(420,p.y+dt*20);
+      if (p.age>=14) state.pellets.splice(i,1);
     }
-    for (let i = state.fish.length - 1; i >= 0; i--) {
-      const fish = state.fish[i];
-      fish.energy = Math.max(0, fish.energy - dt * (round.oxygen < 40 ? 2 : 1.35));
-      const damage = (fish.energy === 0 ? 6 : 0) + (round.oxygen < 25 ? 9 : 0);
-      fish.health = clamp(fish.health + dt * (damage ? -damage : fish.energy >= 30 && round.oxygen >= 50 ? 2 : 0), 0, 100);
-      if (fish.health === 0 && round.outcome === 'active') {
-        state.fish.splice(i, 1);
-        if (state.fish.length === 0) round.outcome = 'lost';
-        if (!savePaused && state.fish.length > 0) status('A fish was lost. Watch the hunger bars and oxygen level.');
-        refresh();
-        save();
-        continue;
-      }
-      if (fish.health === 0) fish.health = 1;
-      let target, gap = Infinity;
-      if (fish.energy < 82) {
-        for (const p of pellets) {
-          const d = distance(fish, p);
-          if (d < gap) { target = p; gap = d; }
+    for (let i=state.fish.length-1;i>=0;i--) {
+      const f=state.fish[i];
+      f.energy=Math.max(0,f.energy-dt*1.5);
+      if (f.energy===0 && hurt(f,dt*7)) {save();continue;}
+      if (f.energy>=40) f.health=Math.min(100,f.health+dt*1.5);
+      let meal, gap=Infinity;
+      if (f.energy<82) {
+        for (const pellet of state.pellets) {
+          const d=distance(f,pellet);
+          if (d<gap) {meal=pellet;gap=d;}
         }
       }
-      if (target && gap <= 15) {
-        fish.energy = Math.min(100, fish.energy + (round.feedUpgraded ? 65 : 40));
-        fish.growth = Math.min(100, fish.growth + (round.feedUpgraded ? 21 : 14));
-        pellets.splice(pellets.indexOf(target), 1);
-        feedback.push({x: fish.x, y: fish.y - 12, age: 0, text: 'Fed', color: '#b8ffda'});
-      } else if (target) {
-        const dx = target.x - fish.x;
-        const ratio = Math.min(1, 135 * dt / gap);
-        fish.x += dx * ratio;
-        fish.y += (target.y - fish.y) * ratio;
-        if (Math.abs(dx) > 3) fish.direction = Math.sign(dx);
+      if (meal && gap<=15) {
+        const food=FOOD[meal.level];
+        f.energy=Math.min(100,f.energy+food.energy);
+        f.growth=Math.min(100,f.growth+food.growth);
+        state.pellets.splice(state.pellets.indexOf(meal),1);
+      } else if (meal) {
+        const dx=meal.x-f.x;
+        const ratio=Math.min(1,140*dt/gap);
+        f.x=clamp(f.x+dx*ratio,38,922);
+        f.y=clamp(f.y+(meal.y-f.y)*ratio,52,445);
+        if (Math.abs(dx)>2) f.direction=Math.sign(dx);
       } else {
-        fish.x = clamp(fish.x + fish.direction * (38 + fish.kind * 6 + fish.growth * .18) * dt, 38, 922);
-        if (fish.x === 38 || fish.x === 922) fish.direction = fish.x === 38 ? 1 : -1;
-        fish.y += (204 + Math.sin(time * .55 + fish.phase) * 88 - fish.y) * dt * .8;
+        f.x=clamp(f.x+f.direction*(43+f.kind*5+f.growth*.16)*dt,38,922);
+        if (f.x===38 || f.x===922) f.direction=f.x===38?1:-1;
+        f.y+=(220+Math.sin(animationTime*.6+f.phase)*104-f.y)*dt*.85;
       }
-      fish.x = clamp(fish.x, 38, 922);
-      fish.y = clamp(fish.y, 52, 367);
-      if (fish.energy >= 30 && round.oxygen >= 32 && state.pearls.length < 24) {
-        fish.timer = Math.max(0, fish.timer - dt);
-        if (fish.timer === 0) {
-          const grown = fish.growth >= 65;
-          state.pearls.push({x: fish.x, y: fish.y, value: 3 + state.coral + (grown ? 2 : 0), age: 0});
-          fish.timer = (grown ? 9 : 13) + Math.random() * 3;
+      if (f.energy>=25 && state.coins.length<32) {
+        f.timer=Math.max(0,f.timer-dt);
+        if (f.timer===0) {
+          const grown=f.growth>=60;
+          state.coins.push({x:f.x,y:f.y,age:0,value:grown?13:8});
+          f.timer=(grown?8:12)+Math.random()*2;
         }
       }
     }
-    if (!playing()) return;
-    for (let i = state.pearls.length - 1; i >= 0; i--) {
-      const p = state.pearls[i];
-      p.y = Math.min(391, p.y + dt * 24);
-      p.age += dt;
-      if (p.age >= PEARL_LIFETIME) state.pearls.splice(i, 1);
-    }
-    if (round.hasSkimmer) {
-      round.skimmerReady = Math.max(0, round.skimmerReady - dt);
-      if (round.skimmerReady === 0) {
-        const index = state.pearls.findIndex(pearl => pearl.y >= 380 || pearl.age >= 9);
-        if (index >= 0) {
-          round.skimmerReady = 7;
-          collect(index);
-        }
-      }
+    for (let i=state.coins.length-1;i>=0;i--) {
+      const c=state.coins[i];
+      c.age+=dt;
+      c.y=Math.min(445,c.y+dt*31);
+      if (c.age>=COIN_LIFETIME) state.coins.splice(i,1);
     }
   }
 
-  function ellipse(x, y, rx, ry, fill) {
+  function ellipse(x,y,rx,ry,fill) {
     ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, 0, 0, 2 * Math.PI);
-    ctx.fillStyle = fill;
+    ctx.ellipse(x,y,rx,ry,0,0,2*Math.PI);
+    ctx.fillStyle=fill;
     ctx.fill();
   }
 
-  function strokeCurve(color, width, x, y, a, b, c, d, e, f) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.bezierCurveTo(a, b, c, d, e, f);
-    ctx.stroke();
-  }
-
-  function polygon(fill, points) {
+  function path(fill,points) {
     ctx.beginPath();
     ctx.moveTo(...points[0]);
     for (const point of points.slice(1)) ctx.lineTo(...point);
     ctx.closePath();
-    ctx.fillStyle = fill;
+    ctx.fillStyle=fill;
     ctx.fill();
   }
 
-  const water = ctx.createLinearGradient(0, 0, 0, 425);
-  water.addColorStop(0, '#1b7483');
-  water.addColorStop(1, '#092738');
+  function curve(color,width,x,y,a,b,c,d,e,f) {
+    ctx.strokeStyle=color;
+    ctx.lineWidth=width;
+    ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+    ctx.bezierCurveTo(a,b,c,d,e,f);
+    ctx.stroke();
+  }
+
+  const water=ctx.createLinearGradient(0,0,0,HEIGHT);
+  water.addColorStop(0,'#237b8c');
+  water.addColorStop(1,'#092a39');
 
   function drawHabitat() {
-    ctx.fillStyle = water;
-    ctx.fillRect(0, 0, 960, 425);
-    for (let i = 0; i < 6; i++) {
-      const x = 12 + i * 166 + Math.sin(time * .27 + i) * 16;
-      polygon('#dbfff020', [[x, 0], [x + 38, 0], [x + 168, 369], [x + 118, 322]]);
-      strokeCurve('#c1f8ef54', 1, x, 16, x + 23, 6, x + 78, 22, x + 112, 14);
+    ctx.fillStyle=water;
+    ctx.fillRect(0,0,WIDTH,HEIGHT);
+    for (let i=0;i<5;i++) {
+      const x=-70+i*217+Math.sin(animationTime*.3+i)*14;
+      path('#c8f8e717',[[x,0],[x+78,0],[x+233,399],[x+168,331]]);
     }
     for (const b of bubbles) {
       ctx.beginPath();
-      ctx.arc(b.x + Math.sin(time + b.x) * 5, (405 + b.y - time * (7 + b.size) % 405) % 405, b.size, 0, 2 * Math.PI);
-      ctx.strokeStyle = '#c3eee74d';
+      ctx.arc(b.x+Math.sin(animationTime*.7+b.y)*7,(480+b.y-animationTime*(8+b.size)%480)%480,b.size,0,2*Math.PI);
+      ctx.strokeStyle='#c7f6ef55';
+      ctx.lineWidth=1;
       ctx.stroke();
     }
     ctx.beginPath();
-    ctx.moveTo(0, 382);
-    ctx.bezierCurveTo(170, 356, 346, 423, 510, 386);
-    ctx.bezierCurveTo(702, 339, 826, 390, 960, 367);
-    ctx.lineTo(960, 425);
-    ctx.lineTo(0, 425);
-    ctx.fillStyle = '#29525a';
+    ctx.moveTo(0,437);
+    ctx.bezierCurveTo(215,404,330,467,520,432);
+    ctx.bezierCurveTo(690,397,830,447,960,420);
+    ctx.lineTo(960,HEIGHT);
+    ctx.lineTo(0,HEIGHT);
+    ctx.fillStyle='#335a62';
     ctx.fill();
-    for (let i = 0; i < 74; i++) ellipse(11 + i * 137 % 940, 396 + i * 71 % 26, 1 + i % 3, 1, '#9cd3c052');
-    for (const x of [24, 57, 81, 105, 840, 872, 906, 938]) {
-      const lean = Math.sin(time * .8 + x) * 12;
-      strokeCurve('#418f82', 3, x, 407, x - 21, 382, x + 27 + lean, 352, x + 9 + lean, 319 + x % 24);
-      strokeCurve('#4ea492', 2, x, 404, x + 4, 390, x - 21 - lean, 369, x - 15, 357);
+    for (let i=0;i<85;i++) ellipse(12+i*121%939,453+i*57%35,1+i%4,1,'#9cd3c048');
+    for (const [x,y,w] of [[119,444,109],[208,451,50],[802,439,126],[882,448,59]]) {
+      path('#244653',[[x-w,y],[x-w*.69,y-37],[x-w*.32,y-55],[x+w*.28,y-44],[x+w*.69,y-22],[x+w,y]]);
+      path('#3a6670',[[x-w*.69,y-37],[x-w*.32,y-55],[x+w*.28,y-44],[x+w*.04,y-27],[x-w*.48,y-21]]);
     }
-    for (const [index, x] of coralSpots.entries()) {
-      ellipse(x, 401, 17, 5, '#12353e');
-      if (index >= state.coral) {
-        ellipse(x, 398, 8, 3, '#578085');
-        continue;
-      }
-      const color = coralColors[index];
-      strokeCurve(color, 6, x, 399, x - 10, 367, x + 12, 354, x + 2, 319);
-      strokeCurve(color, 5, x, 378, x - 23, 366, x - 29, 355, x - 25, 340);
-      strokeCurve(color, 5, x + 3, 359, x + 24, 357, x + 27, 341, x + 31, 329);
-      ellipse(x + 2, 319, 3, 3, '#ffe3bc');
-      ellipse(x + 31, 329, 2.5, 2.5, '#ffe3bc');
+    for (const x of [27,66,148,248,688,823,905,941]) {
+      const lean=Math.sin(animationTime*.8+x)*13;
+      curve('#45938c',4,x,451,x-19,421,x+23+lean,386,x+12+lean,354+x%25);
+      curve('#64a69a',2,x,451,x+7,425,x-22-lean,407,x-19,394);
     }
   }
 
-  function drawFish(fish) {
+  function drawFish(f) {
     ctx.save();
-    ctx.translate(fish.x, fish.y);
-    const size = .67 + fish.growth * .0048;
-    ctx.scale(fish.direction * size, size);
-    const color = fishColors[fish.kind];
-    const twitch = Math.sin(time * 7 + fish.phase) * 5;
-    if (fish.energy < 34) ctx.globalAlpha = .62;
-    polygon(color, [[-13, 0], [-44 + twitch, -14], [-37 + twitch, 0], [-44 + twitch, 14]]);
-    polygon(color, [[-14, -9], [-8, -24], [9, -11]]);
-    ellipse(0, 0, 25, 15, color);
-    ellipse(-1, -5, 18, 6, '#fff5d744');
-    strokeCurve('#14495767', 2.4, -10, -10, -3, -4, -5, 6, -12, 10);
-    if (fish.kind !== 0) strokeCurve('#14495755', 2.4, -18, -8, -12, -3, -13, 4, -18, 8);
-    ellipse(14, -4, 5, 5, '#effff9');
-    ellipse(15, -4, 2.6, 2.6, '#0b303b');
+    ctx.translate(f.x,f.y);
+    const size=.66+f.growth*.005;
+    ctx.scale(f.direction*size,size);
+    const color=fishColors[f.kind];
+    const wave=Math.sin(animationTime*8+f.phase)*6;
+    path(color,[[-14,0],[-44+wave,-14],[-38+wave,0],[-44+wave,14]]);
+    path(color,[[-14,-9],[-8,-24],[9,-11]]);
+    ellipse(0,0,25,15,color);
+    ellipse(-4,-6,15,5,'#fff8dc55');
+    curve('#14495778',2.4,-10,-10,-3,-4,-5,6,-12,10);
+    ellipse(13,-3,5,5,'#f3fbef');
+    ellipse(15,-3,2.5,2.5,'#0b303b');
     ctx.restore();
-    if (fish.energy < 65 || fish.health < 100) {
-      const y = fish.y + 24;
-      ctx.fillStyle = '#071923cb';
-      ctx.fillRect(fish.x - 14, y, 28, 4);
-      ctx.fillStyle = fish.energy < 30 ? '#ffb269' : '#9dedbf';
-      ctx.fillRect(fish.x - 14, y, 28 * fish.energy / 100, 4);
-      if (fish.health < 100) {
-        ctx.fillStyle = '#071923cb';
-        ctx.fillRect(fish.x - 14, y + 6, 28, 3);
-        ctx.fillStyle = '#fa9299';
-        ctx.fillRect(fish.x - 14, y + 6, 28 * fish.health / 100, 3);
+    if (f.energy<55 || f.health<95) {
+      ctx.fillStyle='#071923c9';
+      ctx.fillRect(f.x-14,f.y+24,28,4);
+      ctx.fillStyle=f.energy<23?'#f6a363':'#b4ebbd';
+      ctx.fillRect(f.x-14,f.y+24,28*f.energy/100,4);
+      if (f.health<95) {
+        ctx.fillStyle='#071923c9';
+        ctx.fillRect(f.x-14,f.y+30,28,3);
+        ctx.fillStyle='#f18f9c';
+        ctx.fillRect(f.x-14,f.y+30,28*f.health/100,3);
       }
     }
+  }
+
+  function drawFood(p) {
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(p.age*2);
+    const color=FOOD[p.level].color;
+    if (p.level===0) ellipse(0,0,3,3,color);
+    else if (p.level===1) path(color,[[0,-5],[6,0],[0,4],[-6,1]]);
+    else path(color,[[-5,-4],[5,-4],[5,4],[-5,4]]);
+    ctx.restore();
+  }
+
+  function drawAlien(a) {
+    const pulse=Math.sin(animationTime*5)*3;
+    ctx.save();
+    ctx.translate(a.x,a.y);
+    ellipse(0,0,52+pulse,44+pulse,'#ad78f136');
+    path('#795bc1',[[-41,0],[-27,-27],[21,-32],[43,-7],[23,24],[-22,25]]);
+    path('#c1a3f2',[[-34,-1],[-20,-22],[18,-25],[26,-15],[11,0]]);
+    ellipse(9,1,17,13,'#352456');
+    ellipse(11,0,8,6,'#e2f9aa');
+    ellipse(12,0,3,4,'#38285d');
+    ellipse(-19,17,5,3,'#f4aeed');
+    ellipse(22,15,5,3,'#f4aeed');
+    ctx.fillStyle='#191529';
+    ctx.fillRect(-24,-43,48,5);
+    ctx.fillStyle='#ff9c91';
+    ctx.fillRect(-24,-43,48*a.hp/a.maxHp,5);
+    ctx.restore();
   }
 
   function draw() {
     drawHabitat();
-    if (currentActive()) {
-      ctx.fillStyle = '#10234073';
-      ctx.fillRect(0, 0, tank.width, tank.height);
-      for (let i = 0; i < 6; i++) {
-        const x = (i * 160 + time * 95) % 1110 - 150;
-        const y = 84 + i * 49;
-        strokeCurve('#bce9f555', 2, x, y, x + 35, y - 16, x + 60, y + 16, x + 130, y);
-      }
-    }
-    for (const p of pellets) ellipse(p.x, p.y, 2.5, 2.5, '#ffb174');
-    for (const fish of state.fish) drawFish(fish);
-    for (const p of state.pearls) {
+    state.pellets.forEach(drawFood);
+    state.fish.forEach(drawFish);
+    for (const c of state.coins) {
       ctx.save();
-      ctx.globalAlpha = clamp((PEARL_LIFETIME - p.age) / 3, .16, 1);
-      const radius = 12 + Math.sin(time * 4 + p.x) * 2;
-      ellipse(p.x, p.y, radius + 7, radius + 7, '#ffdc882b');
-      ellipse(p.x, p.y, radius, radius, '#ffdc8868');
-      ellipse(p.x, p.y, 6, 6, '#ffdf8d');
-      ellipse(p.x - 1, p.y - 2, 2, 2, '#fff8da');
+      ctx.globalAlpha=clamp((COIN_LIFETIME-c.age)/2,.15,1);
+      const gold=c.value>=13;
+      const w=4+Math.abs(Math.sin(c.age*6))*5;
+      ellipse(c.x,c.y,13,13,gold?'#f9cc5d35':'#d9e7ed35');
+      ellipse(c.x,c.y,w,10,gold?'#eab14f':'#a3bec7');
+      ellipse(c.x-1,c.y-1,w*.75,8,gold?'#ffdc79':'#e0edf0');
       ctx.restore();
     }
-    ctx.save();
-    ctx.font = 'bold 19px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    for (const effect of feedback) {
-      ctx.globalAlpha = 1 - effect.age;
-      ctx.fillStyle = effect.color;
-      ctx.fillText(effect.text, effect.x, effect.y - 26 * effect.age);
+    if (state.alien && state.fish.length) drawAlien(state.alien);
+    for (const effect of effects) {
+      ctx.save();
+      if (effect.type==='shot') {
+        ctx.globalAlpha=Math.max(0,1-effect.age*4);
+        curve('#ffe0a5',3,WIDTH-25,HEIGHT-15,WIDTH-25,HEIGHT-15,effect.x,effect.y,effect.x,effect.y);
+        ellipse(effect.x,effect.y,11,11,'#ffecb5a0');
+      } else {
+        ctx.globalAlpha=1-effect.age;
+        ctx.fillStyle=effect.color;
+        ctx.font='bold 17px system-ui';
+        ctx.textAlign='center';
+        ctx.fillText(effect.text,effect.x,effect.y-18-effect.age*24);
+      }
+      ctx.restore();
     }
-    ctx.restore();
   }
 
-  tank.addEventListener('click', event => {
-    if (!playing()) return;
-    const rect = tank.getBoundingClientRect();
-    const point = {x: (event.clientX - rect.left) * tank.width / rect.width,
-      y: (event.clientY - rect.top) * tank.height / rect.height};
-    const index = state.pearls.findIndex(p => distance(p, point) <= 23);
-    if (index >= 0) collect(index);
-    else dropFood(point.x, point.y);
+  ui.tank.addEventListener('click',event => {
+    const rect=ui.tank.getBoundingClientRect();
+    const p={x:(event.clientX-rect.left)*WIDTH/rect.width,y:(event.clientY-rect.top)*HEIGHT/rect.height};
+    if (state.alien && distance(state.alien,p)<=48) fire();
+    else {
+      const coin=state.coins.findIndex(c => distance(c,p)<=19);
+      if (coin>=0) collect(coin);
+      else dropFood(p.x,p.y);
+    }
   });
-  tank.addEventListener('keydown', event => {
-    if (event.code === 'Space') dropFood(480, 100);
-    else if (event.key === 'Enter') collect(0);
-    else if (event.code === 'KeyA') aerate();
+  ui.tank.addEventListener('keydown',event => {
+    if (event.code==='Space') dropFood(WIDTH/2,100);
+    else if (event.key==='Enter') collect(0);
+    else if (event.code==='KeyG') fire();
     else return;
     event.preventDefault();
   });
-  ui.buy.addEventListener('click', () => {
+  ui.buy.addEventListener('click',() => {
     if (ui.buy.disabled) return;
-    state.balance -= FISH_COST;
-    state.fish.push(newFish(state.fish.length % 3, 10));
+    state.cash-=BUY_FISH;
+    state.fish.push(makeFish(state.fish.length%3,8));
     refresh();
     save();
   });
-  ui.plant.addEventListener('click', () => {
-    if (ui.plant.disabled) return;
-    state.balance -= CORAL_COSTS[state.coral];
-    state.coral++;
-    if (state.coral === MAX_CORAL) {
-      state.restoredReef = true;
-      state.round.outcome = 'won';
-    }
+  ui.upgrade.addEventListener('click',() => {
+    if (ui.upgrade.disabled) return;
+    state.cash-=FOOD[state.foodLevel].upgrade;
+    state.foodLevel++;
+    say(FOOD[state.foodLevel].label+' food equipped.');
     refresh();
     save();
   });
-  ui.food.addEventListener('click', () => {
-    if (ui.food.disabled) return;
-    state.balance -= FOOD_COST;
-    state.round.feedUpgraded = true;
+  ui.gun.addEventListener('click',fire);
+  ui.save.addEventListener('click',() => save(true));
+  ui.restart.addEventListener('click',() => {
+    if (state.fish.length) return;
+    state=freshTank();
+    effects.length=0;
+    say('New tank started.');
     refresh();
     save();
   });
-  ui.skimmer.addEventListener('click', () => {
-    if (ui.skimmer.disabled) return;
-    state.balance -= SKIMMER_COST;
-    state.round.hasSkimmer = true;
-    refresh();
-    save();
+  ui.fullscreen.addEventListener('click',async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await ui.game.requestFullscreen();
+    } catch {say('Full screen is unavailable here. Try F11 in your browser.');}
   });
-  function aerate() {
-    if (ui.pump.disabled) return;
-    const round = state.round;
-    round.oxygen = Math.min(100, round.oxygen + 38);
-    round.pumpReady = 4;
-    feedback.push({x: 480, y: 116, age: 0, text: '+ oxygen', color: '#b8ffda'});
-    refreshWater();
-    save();
-  }
-  ui.pump.addEventListener('click', aerate);
-  ui.continue.addEventListener('click', () => {
-    if (state.round.outcome === 'lost') state = freshProgress(state.restoredReef);
-    else if (state.round.outcome === 'won') state.round.outcome = 'free';
-    else return;
-    pellets.length = 0;
-    feedback.length = 0;
-    refresh();
-    save();
+  document.addEventListener('fullscreenchange',() => {
+    ui.fullscreen.textContent=document.fullscreenElement?'Exit full screen':'Full screen';
   });
-  ui.save.addEventListener('click', () => save(true));
-  window.addEventListener('pagehide', () => save());
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) save();
-  });
+  window.addEventListener('pagehide',() => save());
+  document.addEventListener('visibilitychange',() => {if (document.hidden) save();});
 
-  let previous = performance.now();
+  let previous=performance.now();
   function frame(now) {
-    const dt = clamp((now - previous) / 1000, 0, .1);
-    previous = now;
+    const dt=clamp((now-previous)/1000,0,.1);
+    previous=now;
     if (!document.hidden) {
-      time += dt;
+      animationTime+=dt;
       tick(dt);
-      for (let i = feedback.length - 1; i >= 0; i--) {
-        feedback[i].age += dt;
-        if (feedback[i].age >= 1) feedback.splice(i, 1);
+      for (let i=effects.length-1;i>=0;i--) {
+        effects[i].age+=dt;
+        if (effects[i].age>=1) effects.splice(i,1);
       }
-      refreshWater();
+      refreshRaid();
       draw();
-      if (time >= nextSave) {
-        nextSave = time + 5;
-        save();
-      }
+      untilSave-=dt;
+      if (untilSave<=0) {untilSave=5;save();}
     }
     requestAnimationFrame(frame);
   }
